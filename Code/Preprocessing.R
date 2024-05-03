@@ -38,7 +38,9 @@ df <- read.csv(paste(data_dir,"pph-subset2.csv", sep = "/"), stringsAsFactors = 
 df <- df %>% select(-c(PrevKryo,PrevMultbirth))
 
 #PrevEpisotomi encodes the same information as PrevEpisiotomy, but the latter is coded as a factor. Keep the later
-df <- df %>% select(-PrevEpisotomi)
+#PrevRBC and PrevRBC12 encode the same information
+#PrevMacrosomia4500,PrevMacrosomia45, PrevMultMacro encode the same information 
+df <- df %>% select(-c(PrevEpisotomi,PrevRBC12, PrevMacrosomia4500, PrevMultMacro))
 
 #Other notes: 
 # - 3 very large observations of PrevTotal, >40 when rest are <30.
