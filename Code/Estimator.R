@@ -60,4 +60,3 @@ Estimator <- R6::R6Class(
   )
 )
 
-Estimator$new(1,2)

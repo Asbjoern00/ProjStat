@@ -1,4 +1,5 @@
 #readRDS("/home/asr/Desktop/ProjStat/Data/processeddata.rds")
+library(tidyverse)
 m <- function(w1,w2){
   w2*exp(sin(w1))/exp(cos(10*w1))-2
 }
@@ -16,6 +17,4 @@ simulate_from_model <- function(g,m,theta=0.5, n = 10000){
                        true_propensity = mean(m(w1,w2)>0))
   )
 }
-df <- simulate_from_model(g,m)$out_frame
-mod <- glm(Y ~ A-1, family = binomial(), data = df)
-predict(mod, newdata = tibble(A = c(1,0)), type = "response") # Totally misspecified
+
