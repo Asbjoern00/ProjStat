@@ -3,22 +3,26 @@ source("LearnerTypes.R")
 source("simulate.R")
 
 #Initialise estimator Class with using GLMnet as propensity learner and GLMnet as mean learner
-estimator <- Estimator$new(prp_lrn = GLMNet$new(A ~ w1+w2), mean_lrn = GLM$new(Y ~ w1 + w2 + A))
+mean_lrn <- GLM$new(Y ~ w9 + w10 + A)
 
-#Simulate data with theta = 1
+estimator <- Estimator$new(prp_lrn = GLM$new(A ~ w1 + w2 + w3), mean_lrn = mean_lrn)
 
 
-#True parameter = 0.370
-
-#Repeat experiment 100 times, each time simulating 1000 data points
+#Repeat experiment 1000 times, each time simulating 500 data points
 theta <- numeric(1000)
+ATE <- numeric(1000)
 for(i in 1:1000){
-  sim_data <- simulate_from_model(g,m, theta = 1, n = 500)
+  sim_data <- simulate_from_model(n = 500)
   theta[i] <- estimator$fit(sim_data$out_frame, one_step = FALSE, cross_fit = FALSE)
+  ATE[i] <- sim_data$ATE
   print(i)
 }
 library(ggplot2)
-#make dataframe of theta values and plot histogram with a vertical line at 0.370 (true effect)
-df <- tibble(theta = theta[theta>0])
+#make dataframe of theta values and plot histogram with a vertical line at 
+df <- tibble(theta = theta)
 
-ggplot(df, aes(x = theta)) + geom_histogram(bins = 20) + geom_vline(xintercept = 0.370, color = "red") + theme_minimal()
+
+estimator$mean_lrn$predict(sim_data$out_frame)
+mean(sim_data$true_cond_mean$cond_Y_true-estimator$mean_lrn$predict(sim_data$out_frame))
+
+ggplot(df, aes(x = sqrt(500)*(theta-mean(ATE)))) + geom_histogram(bins = 100) + geom_vline(xintercept = 0, color = "red") + theme_minimal()
