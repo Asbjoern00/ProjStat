@@ -7,10 +7,12 @@ GLM <- R6::R6Class(
   inherit = Learner,
   private = list(
     fitter = function(X,y){
-      glm(y ~ X, family = binomial())
+      glm(y~X, family = binomial())
     },
     predictor = function(X){
-      predict(self$fitted, as.data.frame(X), type = "response")
+      #I fcking hate this solution
+      new_data <- data.frame(X = I(X))
+      predict(self$fitted, newdata = new_data, type = "response")
     }
   )
 )
