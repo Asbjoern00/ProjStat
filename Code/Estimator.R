@@ -77,6 +77,7 @@ Estimator <- R6::R6Class(
         
         #Estimate ATE 
         ATE <- self$computeATE(df, one_step = one_step)
+        ATE <- min(max(ATE,-1),1) #Make sure ATE is between 1 and -1
       }
       return(mean(ATE))
       

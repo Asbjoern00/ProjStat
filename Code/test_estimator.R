@@ -25,4 +25,4 @@ df <- tibble(theta = theta)
 estimator$mean_lrn$predict(sim_data$out_frame)
 mean(sim_data$true_cond_mean$cond_Y_true-estimator$mean_lrn$predict(sim_data$out_frame))
 
-ggplot(df, aes(x = sqrt(500)*(theta-mean(ATE)))) + geom_histogram(bins = 100) + geom_vline(xintercept = 0, color = "red") + theme_minimal()
+ggplot(df, aes(x = sqrt(500)*(theta-mean(ATE)))) + geom_histogram(bins = 50) + geom_vline(xintercept = 0, color = "red") + theme_minimal()
