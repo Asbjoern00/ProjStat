@@ -19,12 +19,19 @@ sim_cov <- function(n = 100){
 logit <- function(x){
   exp(x)/(1+exp(x))
 }
-
-#Function that takes output from sim_cov and simulates A using some non-linear function of W
+#The efficient influence function
+eif <- function(Y,pY1,pY0,A,propA){
+  A/(propA)*(Y - pY1) - (1 - A)*(Y- pY0)/(1 - propA)
+}
+  
+  #Function that takes output from sim_cov and simulates A using some non-linear function of W
 sim_A <- function(W){
-  prob_A <- logit(W[,1] + 2*W[,2] + 0.5*W[,3])
+  pA <- function(W){
+    logit(W[,1] - 2*W[,2] + 0.5*W[,3])
+  }
+  prob_A <- pA(W)
   A <- rbinom(n = nrow(W), size = 1, prob = prob_A)
-  A
+  list(A = A, pA = pA(W))
 }
 
 sim_Y <- function(A,W){
@@ -36,13 +43,15 @@ sim_Y <- function(A,W){
   list(Y = Y, pY1 = pY(1,W), pY0 = pY(0,W))
 }
 
-simulate_from_model <- function(n = 100){
+simulate_from_model <- function(sim_cov, sim_A, sim_Y, n = 100){
   
   #Simulate covariates
   W <- sim_cov(n)
 
   #simulate A
-  A <- sim_A(W)
+  A_lst <- sim_A(W)
+  A <- A_lst$A
+  propA <- A_lst$pA
   
   #Simulate Y
   Y_lst <- sim_Y(A,W)
@@ -54,8 +63,7 @@ simulate_from_model <- function(n = 100){
   
   list(
   ATE = ATE,
+  asvar = mean(eif(Y = Y, pY1 = Y_lst$pY1, pY0 = Y_lst$pY0, A = A, propA = propA)^2),
   out_frame = out_frame
   )
 }
-simulate_from_model()
-
