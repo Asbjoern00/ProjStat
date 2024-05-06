@@ -1,4 +1,6 @@
-#readRDS("/home/asr/Desktop/ProjStat/Data/processeddata.rds")
+
+
+
 library(tidyverse)
 
 #Make a function that generates ten covariates and applies some transformation of these 
@@ -16,13 +18,7 @@ sim_cov <- function(n = 100){
   W <- cbind(w1,w2,w3,w4,w5,w6,w7,w8,w9,w10)
   W
 }
-logit <- function(x){
-  exp(x)/(1+exp(x))
-}
-#The efficient influence function
-eif <- function(Y,pY1,pY0,A,propA){
-  A/(propA)*(Y - pY1) - (1 - A)*(Y- pY0)/(1 - propA)
-}
+
   
   #Function that takes output from sim_cov and simulates A using some non-linear function of W
 sim_A <- function(W){

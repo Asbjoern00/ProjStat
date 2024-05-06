@@ -1,6 +1,7 @@
 source("Learner.R")
 source("simulate.R")
 library(mgcv)
+library(ranger)
 #Make GLM class that Inherits from the learner class 
 GLM <- R6::R6Class(
   "GLM",
@@ -41,6 +42,26 @@ GAM <- R6::R6Class(
     },
     predict = function(df){
       predict(self$fitted, df, type = "response")
+    }
+  )
+)
+RF <- R6::R6Class(
+  "RF",
+  inherit = Learner,
+  private = list(
+    fitter = function(X,y){
+      rhs <- as.character(self$formula[3])
+      form <- as.formula(paste0("y~", rhs))
+      df = as.data.frame(cbind(X,y))
+      df <- df[, -which(names(df) == "(Intercept)")]
+      arglist <- c(list("formula"= form, data = df, "classification" = TRUE), self$hyperparams)
+      do.call(ranger::ranger, arglist)
+    },
+    predictor = function(X){
+      #get predictions
+      pred <- predict(self$fitted, as.data.frame(X), type = "response", predict.all = TRUE)$predictions
+      #get probaliities by taking the average over columns in pred
+      return(rowMeans(pred))
     }
   )
 )

@@ -107,12 +107,14 @@ Estimator <- R6::R6Class(
       return(split_data)
     },
     computeATE = function(df, one_step = FALSE){
+      #df$prop_score <- max(min(df$prop_score ,1-1e-6),1e-6)
       if (one_step){
         #Compute ATE using one-step estimator
         ATE <- mean(df$cond_mean_trt - df$cond_mean_ctrl 
                     +df[[self$trt_var_name]]/df$prop_score*(df$Y - df$cond_mean_trt)
                     - (1-df[[self$trt_var_name]])/(1-df$prop_score)*(df$Y - df$cond_mean_ctrl))
         asvar <- mean(((df[[self$trt_var_name]]/df$prop_score*(df$Y - df$cond_mean_trt) - (1-df[[self$trt_var_name]])/(1-df$prop_score)*(df$Y - df$cond_mean_ctrl)))^2)
+        
         return(list(ATE = ATE, asvar = asvar))
       }
       else {

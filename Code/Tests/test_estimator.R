@@ -1,3 +1,4 @@
+setwd("/home/asr/Desktop/ProjStat/Code")
 source("Estimator.R")
 source("LearnerTypes.R")
 source("simulate.R")
@@ -32,3 +33,4 @@ df <- tibble(theta = theta)
 
 ggplot(df) + geom_histogram(aes(x = sqrt(500)*(theta-mean(ATE)), after_stat(density)),bins = 10) + geom_density(aes(x = sqrt(500)*(theta-mean(ATE)), after_stat(density))) + geom_vline(xintercept = 0, color = "red") +
   stat_function(fun = dnorm, args = list(mean = 0, sd =mean(sqrt(asvarest))), color = "blue") + theme_minimal()
+
