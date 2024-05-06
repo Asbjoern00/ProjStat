@@ -8,6 +8,7 @@ Learner <- R6::R6Class(
     hyperparams = NULL,
     formula = NULL,
     fitted = NULL,
+    Xtrain = NULL,
     initialize = function(formula,name=NULL, hyperparams=NULL){
       self$name <- name
       self$hyperparams <- hyperparams
@@ -37,6 +38,7 @@ Learner <- R6::R6Class(
     },
     preprocess = function(df){
       X <- model.matrix(self$formula, df)
+      self$Xtrain <- X
       resp_name <- as.character(self$formula[2]) #get the name of the response vector
       y <- df[[resp_name]]
       return(list(X = X, y = y))

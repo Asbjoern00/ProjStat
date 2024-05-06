@@ -7,25 +7,43 @@ Estimator <- R6::R6Class(
     prp_lrn = NULL,
     mean_lrn = NULL,
     trt_var_name = NULL,
+    cross_fit = NULL,
+    one_step = NULL,
     ATE = NULL,
     asvar = NULL,
     confint_lwr = NULL,
     confint_upr = NULL,
-    initialize = function(prp_lrn, mean_lrn, trt_var_name = "A"){
+    name = NULL,
+    initialize = function(prp_lrn, mean_lrn, trt_var_name = "A", cross_fit = 0, one_step = TRUE){
       self$prp_lrn <- prp_lrn
       self$mean_lrn <- mean_lrn
       self$trt_var_name <- trt_var_name
+      self$cross_fit = cross_fit
+      self$one_step = one_step
+      if (self$one_step){
+        os <- "One-step"
+      }
+      else{
+        os <- "G-formula"
+      }
+      if (self$cross_fit > 0){
+        cf <- paste0("Cross-fit (K = ", self$cross_fit, ") ")
+      }
+      else{
+        cf <- "No cross-fit "
+      }
+      self$name = paste0(cf, os, " with mean_lrn: ", mean_lrn$name, " and prop_lrn: ", prp_lrn$name)
     },
-    fit = function(df, cross_fit = 0, one_step = FALSE){
+    fit = function(df){
       # Method to estimate ATE
-      if(cross_fit > 0){
+      if(self$cross_fit > 0){
         #Split up datasets for crossfitting. Also setup vectors to store ATE and asvar
-        split_datasets <- self$split_dataset(df, cross_fit)
-        ATE <- numeric(cross_fit)
-        asvar <- numeric(cross_fit)
+        split_datasets <- self$split_dataset(df, self$cross_fit)
+        ATE <- numeric(self$cross_fit)
+        asvar <- numeric(self$cross_fit)
         resp_name <- as.character(self$mean_lrn$formula[2])
         
-        for(i in seq(cross_fit)){
+        for(i in seq(self$cross_fit)){
           
           #Bind dataset to do fitting of ml-estimators on
           fit_frame <- do.call(rbind, split_datasets[-i])
@@ -44,24 +62,26 @@ Estimator <- R6::R6Class(
           trtmt <- for_predict[[self$trt_var_name]]
           
           for_predict[[self$trt_var_name]] <- 0
-          for_predict$cond_mean_ctrl <- self$mean_lrn$predict(for_predict)
+          cond_mean_ctrl <- self$mean_lrn$predict(for_predict)
           
           for_predict[[self$trt_var_name]] <- 1
-          for_predict$cond_mean_trt <- self$mean_lrn$predict(for_predict)
+          cond_mean_trt <- self$mean_lrn$predict(for_predict)
+          
           for_predict[[self$trt_var_name]] <- trtmt
+          for_predict$cond_mean_ctrl <- cond_mean_ctrl
+          for_predict$cond_mean_trt <- cond_mean_trt
           
           #Propensity scores
           for_predict$prop_score <- self$prp_lrn$predict(dplyr::select(for_predict, -c(resp_name, "cond_mean_trt", "cond_mean_ctrl")))
           
           #Estimate ATE
-          ATE_lst <- self$computeATE(for_predict, one_step = one_step)
+          ATE_lst <- self$computeATE(for_predict)
           ATE[i] <- ATE_lst$ATE
           asvar[i] <- ATE_lst$asvar
           
         }   
       }
       else {
-        
         #Fit mean learner
         self$mean_lrn$fit(df)
         
@@ -81,7 +101,7 @@ Estimator <- R6::R6Class(
         df$prop_score <- self$prp_lrn$predict(dplyr::select(df, -c(resp_name,"cond_mean_trt", "cond_mean_ctrl")))
         
         #Estimate ATE 
-        ATE_lst <- self$computeATE(df, one_step = one_step)
+        ATE_lst <- self$computeATE(df)
         ATE <- ATE_lst$ATE
         asvar <- ATE_lst$asvar
       }
@@ -106,9 +126,8 @@ Estimator <- R6::R6Class(
       
       return(split_data)
     },
-    computeATE = function(df, one_step = FALSE){
-      #df$prop_score <- max(min(df$prop_score ,1-1e-6),1e-6)
-      if (one_step){
+    computeATE = function(df){
+      if (self$one_step){
         #Compute ATE using one-step estimator
         ATE <- mean(df$cond_mean_trt - df$cond_mean_ctrl 
                     +df[[self$trt_var_name]]/df$prop_score*(df$Y - df$cond_mean_trt)
