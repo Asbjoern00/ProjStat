@@ -62,10 +62,17 @@ RF <- R6::R6Class(
     predictor = function(X){
       #get predictions
       #If data equals training data, return the out of bag predictions
-      if(all.equal(X, self$Xtrain)){
+      #TODO add a more clever check to check whether the data is the same. Cant do all equal as the treatment variable is changed
+      if(isTRUE(all.equal(X[,c(2,3,4,5,6,7)], self$Xtrain[,c(2,3,4,5,6,7)]))){
+        #bind number of inbag counts to matrix
         ibcs <- do.call(cbind, self$fitted$inbag.counts)
+        # get indices of rows that are inbag
+        idx <- which(ibcs > 0)
+        #get predictions
         pred <- predict(self$fitted, as.data.frame(X), type = "response", predict.all = TRUE)$predictions
-        pred[which(ibcs > 0)] <- NA
+        #set values to NA for rows that are inbag
+        pred[idx] <- NA
+        
       }
       else{
         pred <- predict(self$fitted, as.data.frame(X), type = "response", predict.all = TRUE)$predictions

@@ -34,8 +34,16 @@ Experiment <- R6::R6Class("Experiment",
       confint_lwr <- numeric(self$n_sims)
       confint_upr <- numeric(self$n_sims)
       for(i in 1:self$n_sims){
+        
         #Consider parallelizing this
-        sim$simulate()
+        #simulate until we get a valid simulation
+        valid_sim <- FALSE
+        while(!valid_sim){
+          self$sim$simulate()
+          if(!any(is.na(self$sim$out_frame))){
+            valid_sim <- TRUE
+          }
+        }
         asvars[i] <- sim$asvar
         TrueATEs[i] <- sim$ATE
         self$est$fit(sim$out_frame)

@@ -17,6 +17,7 @@ Learner <- R6::R6Class(
     fit = function(df) {
       # Method to fit to data
       preprocessed <- private$preprocess(df)
+      self$Xtrain <- preprocessed[["X"]]
       self$fitted <- private$fitter(preprocessed[["X"]], preprocessed[["y"]])
     },
     predict = function(df){
@@ -38,7 +39,6 @@ Learner <- R6::R6Class(
     },
     preprocess = function(df){
       X <- model.matrix(self$formula, df)
-      self$Xtrain <- X
       resp_name <- as.character(self$formula[2]) #get the name of the response vector
       y <- df[[resp_name]]
       return(list(X = X, y = y))

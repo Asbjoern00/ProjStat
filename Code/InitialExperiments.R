@@ -1,3 +1,4 @@
+setwd("/home/asr/Desktop/ProjStat/Code")
 source("Experiment.R")
 source("Estimator.R")
 source("Simulator.R")
@@ -5,7 +6,7 @@ source("LearnerTypes.R")
 options(error = recover)
 
 #SIMULATION SETTINGS
-nsim <- 300
+nsim <- 400
 n <- 6000
 sim <- Simulator$new(n = n, sim_cov = sim_cov, sim_A = sim_A, sim_Y = sim_Y)
 
