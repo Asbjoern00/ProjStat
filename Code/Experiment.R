@@ -22,6 +22,7 @@ Experiment <- R6::R6Class("Experiment",
     confint_lwr = NULL,
     confint_upr = NULL,
     cvrg = NULL,
+    estasvar = NULL,
     initialize = function(n_sims, sim, est){
       self$n_sims <- n_sims
       self$sim <- sim
@@ -33,6 +34,7 @@ Experiment <- R6::R6Class("Experiment",
       asvars <- numeric(self$n_sims)
       confint_lwr <- numeric(self$n_sims)
       confint_upr <- numeric(self$n_sims)
+      estasvar <- numeric(self$n_sims)
       for(i in 1:self$n_sims){
         
         #Consider parallelizing this
@@ -48,26 +50,52 @@ Experiment <- R6::R6Class("Experiment",
         TrueATEs[i] <- sim$ATE
         self$est$fit(sim$out_frame)
         ATEs[i] <- self$est$ATE
+        #if(self$est$ATE > 0.9){
+        #  browser()
+        #}
         confint_lwr[i] <- self$est$confint_lwr
         confint_upr[i] <- self$est$confint_upr
+        estasvar[i] <- self$est$asvar
         if (verbose){
           cat(sprintf("Simulation %d done\n", i))
         }
       }
       self$TrueATE <- mean(TrueATEs)
       self$asvar <- mean(asvars)
+      self$estasvar <- mean(estasvar)
       self$confint_lwr <- confint_lwr
       self$confint_upr <- confint_upr
       self$ATE <- ATEs
       self$cvrg <- mean((TrueATEs > confint_lwr) * (TrueATEs < confint_upr))
     },
-    plot = function(bins = 8){
+    plotdist = function(bins = 8, title = FALSE){
       data = tibble(ATE = self$ATE)
-      for_title <- paste0(self$est$name, " on ", self$sim$n , " observations", " with ", self$n_sims, " simulations")
-      ggplot(data) + geom_histogram(aes(x = sqrt(self$sim$n)*(ATE-self$TrueATE), after_stat(density)), bins = bins) + 
-        geom_density(aes(x = sqrt(self$sim$n)*(ATE-self$TrueATE), after_stat(density))) + geom_vline(xintercept = 0, color = "red") +
-        stat_function(fun = dnorm, args = list(mean = 0, sd =sqrt(self$asvar)), color = "blue") + ylab("Density") + xlab("sqrt(n)*(ATE-ATE_0)") + 
-        ggtitle(for_title)  +theme_bw() + theme(plot.title = ggtext::element_textbox_simple(size = 7))
+      
+      if(title){
+        for_title <- paste0(self$est$name, " on ", self$sim$n , " observations", " with ", self$n_sims, " simulations")
+      } else {
+        for_title <- ""
+      }
+      ggplot(data) + geom_histogram(aes(x = sqrt(self$sim$n)*(ATE-self$TrueATE), after_stat(density)), fill = "black", color = "black", alpha = 0.6, bins = bins) + 
+        geom_density(aes(x = sqrt(self$sim$n)*(ATE-self$TrueATE), after_stat(density)), color = "black") + geom_vline(xintercept = 0, color = "red") +
+        stat_function(fun = dnorm, args = list(mean = 0, sd =sqrt(self$asvar)), color = "blue") + 
+        ylab("Density") + #stat_function(fun = dnorm, args = list(mean = 0, sd = sqrt(self$estasvar)), color = "hotpink") + 
+        xlab(latex2exp::TeX(r"($\sqrt{n}\cdot(ATE-ATE_0)$)")) + ggtitle(for_title)  +theme_bw() + theme(plot.title = ggtext::element_textbox_simple(size = 7))
+    },
+    plotci = function(){
+      #Make ggplot with x-axis being confidence interval endpoint and a vertical line at the true ATE. Color confiddence intervals that contain the True ATE green
+      # and others red
+      data = tibble(confint_lwr = self$confint_lwr, confint_upr = self$confint_upr)
+      data$TrueATE <- self$TrueATE
+      data$contains <- as.factor((data$confint_lwr < data$TrueATE) * (data$confint_upr > data$TrueATE))
+      #data <- arrange(data, confint_lwr)
+      data$n <- 1:nrow(data)
+    
+      data <- pivot_longer(data, cols = c(confint_lwr, confint_upr))
+      
+      ggplot(data, aes(x = n , y = value, group =n, color = contains)) + geom_line() + geom_hline(yintercept = self$TrueATE) + 
+        scale_color_manual(values = c("darkred", "forestgreen")) + ylab("Upper/Lower CI Endpoint") + xlab("Simulation") + theme_bw() +
+        theme(legend.position="none") + ggtitle(paste("Coverage:", round(self$cvrg,3)))
     }
   )
 )

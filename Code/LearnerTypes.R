@@ -1,14 +1,20 @@
 source("Learner.R")
 library(mgcv)
 library(ranger)
-options(error=browser)
 #Make GLM class that Inherits from the learner class 
 GLM <- R6::R6Class(
   "GLM",
   inherit = Learner,
   private = list(
     fitter = function(X,y){
-      glm(y~X-1, family = binomial())
+      if(is.null(self$hyperparams)){
+        arglist <- c(list("formula"= y~X-1, "family"= binomial()))
+      }
+      else{
+        arglist <- c(list("formula"= y~X-1, "family"= binomial(link = self$hyperparams$customlink)))
+      }
+      fitted <- do.call(glm, arglist)
+      return(fitted)
     },
     predictor = function(X){
       #I fcking hate this solution
@@ -50,20 +56,35 @@ GAM <- R6::R6Class(
 RF <- R6::R6Class(
   "RF",
   inherit = Learner,
+  public = list(
+    oob = NULL,
+    autotune = NULL,
+    initialize = function(formula, name=NULL, hyperparams=NULL, oob = FALSE, autotune = FALSE){
+      super$initialize(formula, name, hyperparams)
+      self$oob <- oob
+      self$autotune <- autotune
+    }
+  ),
   private = list(
     fitter = function(X,y){
       rhs <- as.character(self$formula[3])
       form <- as.formula(paste0("y~", rhs))
       df = as.data.frame(cbind(X,y))
       df <- df[, -which(names(df) == "(Intercept)")]
-      arglist <- c(list("formula"= form, data = df, "classification" = TRUE, "keep.inbag" = TRUE), self$hyperparams)
-      do.call(ranger::ranger, arglist)
+      if(self$autotune){
+        df$y <- as.factor(df$y)
+        task <- mlr::makeClassifTask(data = df, target = "y")
+        res <- tuneRanger::tuneRanger(task, iters = 25, num.threads = 8)
+        res$model$learner.model
+      }
+      else{
+        arglist <- c(list("formula"= form, data = df, "classification" = TRUE, "keep.inbag" = TRUE), self$hyperparams)
+        do.call(ranger::ranger, arglist) 
+      }
     },
     predictor = function(X){
       #get predictions
-      #If data equals training data, return the out of bag predictions
-      #TODO add a more clever check to check whether the data is the same. Cant do all equal as the treatment variable is changed
-      if(isTRUE(all.equal(X[,c(2,3,4,5,6,7)], self$Xtrain[,c(2,3,4,5,6,7)]))){
+      if(self$oob){
         #bind number of inbag counts to matrix
         ibcs <- do.call(cbind, self$fitted$inbag.counts)
         # get indices of rows that are inbag
@@ -73,14 +94,35 @@ RF <- R6::R6Class(
         #set values to NA for rows that are inbag
         pred[idx] <- NA
         
-      }
-      else{
-        pred <- predict(self$fitted, as.data.frame(X), type = "response", predict.all = TRUE)$predictions
-      }
-      
+      } # Note that this is how to make a probability forest work (this is what tune-ranger outputs. Consider doing this for the other RF as well)
+        if(self$autotune){
+        pred <- predict(self$fitted, as.data.frame(X))$predictions[,"1"]
+        }
+        else{
+          #Take means over rows if running a classification forest.
+          pred <- predict(self$fitted, as.data.frame(X), predict.all = TRUE)$predictions
+          pred <- rowMeans(pred, na.rm = TRUE)
+        }
       #get probalities by taking the average over columns in pred
-      return(rowMeans(pred, na.rm = TRUE))
+      return(pred)
     }
   )
 )
 
+#Implement a learner of the Highly Adaptive Lasso (HAL) type
+
+HAL <- R6::R6Class(
+  "HAL",
+  inherit = Learner,
+  private = list(
+    fitter = function(X,y){
+      doMC::registerDoMC(cores = 5)
+      arglist <- c(list("X"= X, "Y" = y, "family" = "binomial",
+                   "fit_control" = list(nfolds = 5, parallel = TRUE)), self$hyperparams)
+      do.call(hal9001::fit_hal, arglist)
+    },
+    predictor = function(X){
+      as.vector(predict(self$fitted, X, type = "response"))
+    }
+  )
+)

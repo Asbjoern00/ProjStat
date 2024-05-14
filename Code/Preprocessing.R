@@ -32,7 +32,7 @@ setwd(wd)
 df <- read.csv(paste(data_dir,"pph-subset2.csv", sep = "/"), stringsAsFactors = TRUE) %>% tibble()
 
 #Print summary, note no missingness.
-#summary(df)
+summary(df)
 
 #No variability in PrevKryo and Prev Multbirth, so remove this from the dataset.
 df <- df %>% select(-c(PrevKryo,PrevMultbirth))
@@ -55,3 +55,5 @@ df <- df %>% select(-c(PrevEpisotomi,PrevRBC12, PrevMacrosomia4500, PrevMultMacr
 #plot_marginals(df)
 
 saveRDS(df, paste(data_dir,"processeddata.rds", sep = "/"))
+
+

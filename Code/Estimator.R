@@ -2,11 +2,12 @@
 
 # Define the class
 Estimator <- R6::R6Class(
-  "Estimator",  # Class name
+  "OneStepEstimator",  # Class name
   public = list(  # Public methods and fields
     prp_lrn = NULL,
     mean_lrn = NULL,
     trt_var_name = NULL,
+    resp_name = NULL,
     cross_fit = NULL,
     one_step = NULL,
     ATE = NULL,
@@ -14,10 +15,11 @@ Estimator <- R6::R6Class(
     confint_lwr = NULL,
     confint_upr = NULL,
     name = NULL,
-    initialize = function(prp_lrn, mean_lrn, trt_var_name = "A", cross_fit = 0, one_step = TRUE){
+    initialize = function(prp_lrn, mean_lrn, cross_fit = 0, one_step = TRUE){
       self$prp_lrn <- prp_lrn
       self$mean_lrn <- mean_lrn
-      self$trt_var_name <- trt_var_name
+      self$trt_var_name <- as.character(prp_lrn$formula[2])
+      self$resp_name <- as.character(mean_lrn$formula[2])
       self$cross_fit = cross_fit
       self$one_step = one_step
       if (self$one_step){
@@ -41,7 +43,6 @@ Estimator <- R6::R6Class(
         split_datasets <- self$split_dataset(df, self$cross_fit)
         ATE <- numeric(self$cross_fit)
         asvar <- numeric(self$cross_fit)
-        resp_name <- as.character(self$mean_lrn$formula[2])
         
         for(i in seq(self$cross_fit)){
           
@@ -52,7 +53,7 @@ Estimator <- R6::R6Class(
           self$mean_lrn$fit(fit_frame)
           
           #Fit propensity learner
-          self$prp_lrn$fit(dplyr::select(fit_frame, -c(resp_name)))
+          self$prp_lrn$fit(dplyr::select(fit_frame, -c(self$resp_name)))
           
           # Predict propensity scores and conditional means on the left out fold
           #Conditional means
@@ -72,7 +73,7 @@ Estimator <- R6::R6Class(
           for_predict$cond_mean_trt <- cond_mean_trt
           
           #Propensity scores
-          for_predict$prop_score <- self$prp_lrn$predict(dplyr::select(for_predict, -c(resp_name, "cond_mean_trt", "cond_mean_ctrl")))
+          for_predict$prop_score <- self$prp_lrn$predict(dplyr::select(for_predict, -c(self$resp_name, "cond_mean_trt", "cond_mean_ctrl")))
           
           #Estimate ATE
           ATE_lst <- self$computeATE(for_predict)
@@ -130,16 +131,19 @@ Estimator <- R6::R6Class(
       if (self$one_step){
         #Compute ATE using one-step estimator
         ATE <- mean(df$cond_mean_trt - df$cond_mean_ctrl 
-                    +df[[self$trt_var_name]]/df$prop_score*(df$Y - df$cond_mean_trt)
-                    - (1-df[[self$trt_var_name]])/(1-df$prop_score)*(df$Y - df$cond_mean_ctrl))
-        asvar <- mean(((df[[self$trt_var_name]]/df$prop_score*(df$Y - df$cond_mean_trt) - (1-df[[self$trt_var_name]])/(1-df$prop_score)*(df$Y - df$cond_mean_ctrl)))^2)
+                    +df[[self$trt_var_name]]/df$prop_score*(df[[self$resp_name]] - df$cond_mean_trt)
+                    - (1-df[[self$trt_var_name]])/(1-df$prop_score)*(df[[self$resp_name]] - df$cond_mean_ctrl))
+        
+        
+        #Compute asymptotic variance - Check if this is correctly implemented at some point
+        asvar <- mean(((df[[self$trt_var_name]]/df$prop_score*(df[[self$resp_name]] - df$cond_mean_trt) - (1-df[[self$trt_var_name]])/(1-df$prop_score)*(df[[self$resp_name]] - df$cond_mean_ctrl)))^2)
         
         return(list(ATE = ATE, asvar = asvar))
       }
       else {
         #Compute ATE using g-formula
         ATE <- mean(df$cond_mean_trt - df$cond_mean_ctrl)
-        asvar <- mean(((df[[self$trt_var_name]]/df$prop_score*(df$Y - df$cond_mean_trt) - (1-df[[self$trt_var_name]])/(1-df$prop_score)*(df$Y - df$cond_mean_ctrl)))^2)
+        asvar <- mean(((df[[self$trt_var_name]]/df$prop_score*(df[[self$resp_name]] - df$cond_mean_trt) - (1-df[[self$trt_var_name]])/(1-df$prop_score)*(df[[self$resp_name]] - df$cond_mean_ctrl)))^2)
         self$ATE <- ATE
         self$asvar <- asvar
         return(list(ATE = ATE, asvar = asvar))
@@ -147,4 +151,54 @@ Estimator <- R6::R6Class(
     }
   )
 )
+
+#Create a TMLE class inheriting from the estimator class but with a different computeATE method
+TMLE <- R6::R6Class(
+  "TMLE",
+  inherit = Estimator,
+  public = list(
+    initialize = function(prp_lrn, mean_lrn, trt_var_name = "A", cross_fit = 0){
+      self$prp_lrn <- prp_lrn
+      self$mean_lrn <- mean_lrn
+      self$trt_var_name <- as.character(prp_lrn$formula[2])
+      self$resp_name <- as.character(mean_lrn$formula[2])
+      self$cross_fit = cross_fit
+      if (self$cross_fit > 0){
+        cf <- paste0("Cross-fit (K = ", self$cross_fit, ") ")
+      }
+      else{
+        cf <- "No cross-fit "
+      }
+      self$name = paste0(cf,"TMLE with mean_lrn: ", mean_lrn$name, " and prop_lrn: ", prp_lrn$name)
+    },
+    computeATE = function(df) {
+      #Compute ATE using TMLE
+      df$cond_mean_obs <- df$cond_mean_trt*df[[self$trt_var_name]] + df$cond_mean_ctrl*(1-df[[self$trt_var_name]])
+      df$prop_score <- pmin(pmax(df$prop_score, 0.00001), 0.99999) # keep propenstiy score bounded away from extremes to avoid infinite weights
+      df$clever_cov <- df[[self$trt_var_name]]/df$prop_score - (1-df[[self$trt_var_name]])/(1-df$prop_score)
+      
+      # Estimate epsilon on when regressing the response on the clever covariate offset with cond_mean_obs
+      off_setter <- qlogis(pmax(pmin(df$cond_mean_obs, 1-1e-6),0+1e-6))
+      fit <- glm(df[[self$resp_name]] ~ df$clever_cov + offset(off_setter) - 1, family = binomial())
+      
+      if(!fit$converged){
+        warning("Targetting in TMLE step did not converge, setting epsilon = 0")
+        epsilon <- 0
+      }
+      else{
+        epsilon <- unname(coef(fit))
+      }
+      #Update estimates
+      df$cond_mean_obs <- plogis(qlogis(df$cond_mean_obs) + epsilon*df$clever_cov)
+      df$cond_mean_ctrl <- plogis(qlogis(df$cond_mean_ctrl) - epsilon*(1/(1-df$prop_score)))
+      df$cond_mean_trt <- plogis(qlogis(df$cond_mean_trt) + epsilon*(1/df$prop_score))
+      #Compute ATE
+      ATE <- mean(df$cond_mean_trt - df$cond_mean_ctrl)
+      
+      #compute asymptotic variance
+      asvar <- var((df[[self$resp_name]]-df$cond_mean_obs)*df$clever_cov + df$cond_mean_trt - df$cond_mean_ctrl - ATE)
+
+      return(list(ATE = ATE, asvar = asvar))
+    }
+  ))
 
