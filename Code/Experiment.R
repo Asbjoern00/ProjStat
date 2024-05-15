@@ -67,6 +67,8 @@ Experiment <- R6::R6Class("Experiment",
       self$confint_upr <- confint_upr
       self$ATE <- ATEs
       self$cvrg <- mean((TrueATEs > confint_lwr) * (TrueATEs < confint_upr))
+      self$est$mean_lrn$fitted <- NULL
+      self$est$prp_lrn$fitted <- NULL
     },
     plotdist = function(bins = 8, title = FALSE){
       data = tibble(ATE = self$ATE)

@@ -32,13 +32,14 @@ Simulator <- R6::R6Class("Simulator",
                              out_frame <- cbind(W, A, Y) %>% as_tibble()
                              
                              self$ATE <- ATE
-                             self$asvar <- mean(private$eif(Y = Y, pY1 = Y_lst$pY1, pY0 = Y_lst$pY0, A = A, propA = propA)^2)
+                             self$asvar <- mean(private$eif(Y = Y, pY1 = Y_lst$pY1, pY0 = Y_lst$pY0, A = A, propA = propA, pY = Y_lst$pY)^2)
                              self$out_frame <- out_frame
                            }
                          ),
                          private = list(
-                           eif = function(Y, pY1, pY0, A, propA){
-                             (A/propA) * (Y - pY1) - ((1-A)/(1-propA))*(Y-pY0) + pY1 - pY0 - self$ATE 
+                           eif = function(Y, pY1, pY0, pY , A, propA){
+                             clever_cov <- (A/propA) - (1-A)/(1-propA)
+                             clever_cov*(Y-pY) + (pY1 - pY0) - self$ATE 
                            }
                          )
 )
@@ -69,7 +70,7 @@ sim_cov <- function(n = 100){
 #Function that takes output from sim_cov and simulates A using some non-linear function of W
 sim_A <- function(W){
   pA <- function(W){
-    logit(W[,1] - 2*W[,2] + 0.5*W[,3])
+    pmin(pmax(logit(W[,1] - 2*W[,2] + 0.5*W[,3]),0.001),0.999)
   }
   prob_A <- pA(W)
   A <- rbinom(n = nrow(W), size = 1, prob = prob_A)
@@ -85,3 +86,4 @@ sim_Y <- function(A,W){
   Y <- rbinom(n = nrow(W), size = 1, prob = prob_Y)
   list(Y = Y, pY1 = pY(1,W), pY0 = pY(0,W), pY = prob_Y)
 }
+

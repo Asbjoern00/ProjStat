@@ -110,7 +110,6 @@ RF <- R6::R6Class(
 )
 
 #Implement a learner of the Highly Adaptive Lasso (HAL) type
-
 HAL <- R6::R6Class(
   "HAL",
   inherit = Learner,

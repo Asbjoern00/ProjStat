@@ -174,14 +174,17 @@ TMLE <- R6::R6Class(
     computeATE = function(df) {
       #Compute ATE using TMLE
       df$cond_mean_obs <- df$cond_mean_trt*df[[self$trt_var_name]] + df$cond_mean_ctrl*(1-df[[self$trt_var_name]])
-      df$prop_score <- pmin(pmax(df$prop_score, 0.00001), 0.99999) # keep propenstiy score bounded away from extremes to avoid infinite weights
+      df$prop_score <- pmin(pmax(df$prop_score, 0.001), 0.999) # keep propenstiy score bounded away from extremes to avoid infinite weights
       df$clever_cov <- df[[self$trt_var_name]]/df$prop_score - (1-df[[self$trt_var_name]])/(1-df$prop_score)
+      df$clever_cov <- pmin(pmax(df$clever_cov, -40), 40)
+      
       
       # Estimate epsilon on when regressing the response on the clever covariate offset with cond_mean_obs
       off_setter <- qlogis(pmax(pmin(df$cond_mean_obs, 1-1e-6),0+1e-6))
       fit <- glm(df[[self$resp_name]] ~ df$clever_cov + offset(off_setter) - 1, family = binomial())
       
       if(!fit$converged){
+        #browser()
         warning("Targetting in TMLE step did not converge, setting epsilon = 0")
         epsilon <- 0
       }
