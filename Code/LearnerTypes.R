@@ -18,7 +18,6 @@ GLM <- R6::R6Class(
     },
     predictor = function(X){
       #I fcking hate this solution
-      #browser()
       new_data <- data.frame(X = I(X))
       predict(self$fitted, newdata = new_data, type = "response")
     }

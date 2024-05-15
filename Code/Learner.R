@@ -26,6 +26,10 @@ Learner <- R6::R6Class(
       to_predict <- preprocessed[["X"]]
       predicted <- private$predictor(to_predict)
       return(predicted)
+    },
+    reset = function(){
+      self$Xtrain <- NULL
+      self$fitted <- NULL
     }
   ),
   private = list(
