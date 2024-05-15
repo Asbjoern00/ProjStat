@@ -70,7 +70,7 @@ sim_cov <- function(n = 100){
 #Function that takes output from sim_cov and simulates A using some non-linear function of W
 sim_A <- function(W){
   pA <- function(W){
-    pmin(pmax(logit(W[,1] - 2*W[,2] + 0.5*W[,3]),0.001),0.999)
+    logit(W[,1] - 2*W[,2] + 0.5*W[,3])
   }
   prob_A <- pA(W)
   A <- rbinom(n = nrow(W), size = 1, prob = prob_A)
