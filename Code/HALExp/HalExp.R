@@ -35,3 +35,6 @@ for(i in 1:length(exps)){
 }
 
 
+readRDS("/home/asr/Desktop/ProjStat/Code/HALExp/hal_experiment.rds")
+
+
