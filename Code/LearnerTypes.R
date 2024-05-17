@@ -92,21 +92,24 @@ RF <- R6::R6Class(
         pred <- predict(self$fitted, as.data.frame(X), type = "response", predict.all = TRUE)$predictions
         #set values to NA for rows that are inbag
         pred[idx] <- NA
-        
-      } # Note that this is how to make a probability forest work (this is what tune-ranger outputs. Consider doing this for the other RF as well)
-        if(self$autotune){
-        pred <- predict(self$fitted, as.data.frame(X))$predictions[,"1"]
-        }
-        else{
-          #Take means over rows if running a classification forest.
-          pred <- predict(self$fitted, as.data.frame(X), predict.all = TRUE)$predictions
-          pred <- rowMeans(pred, na.rm = TRUE)
-        }
+      }
+      else{
+        #browser()
+        #Take means over rows if running a classification forest.
+        pred <- predict(self$fitted, as.data.frame(X), predict.all = TRUE)$predictions
+      }
       #get probalities by taking the average over columns in pred
+      pred <- rowMeans(pred, na.rm = TRUE)
+      
       return(pred)
     }
   )
 )
+
+# # Note that this is how to make a probability forest work (this is what tune-ranger outputs). Consider doing this for the other RF as well)
+#if(self$autotune){
+#pred <- predict(self$fitted, as.data.frame(X))$predictions[,"1"]
+#}
 
 #Implement a learner of the Highly Adaptive Lasso (HAL) type
 HAL <- R6::R6Class(

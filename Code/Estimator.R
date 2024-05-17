@@ -365,3 +365,57 @@ TMLE <- R6::R6Class(
       return(list(ATE = ATE, asvar = asvar))
     }
   ))
+
+
+#Create a TMLE class inheriting from the estimator class but with a different computeATE method
+UPTMLE <- R6::R6Class(
+  "UPTMLE",
+  inherit = Estimator,
+  public = list(
+    initialize = function(prp_lrn, mean_lrn, trt_var_name = "A", cross_fit = 0){
+      self$prp_lrn <- prp_lrn
+      self$mean_lrn <- mean_lrn
+      self$trt_var_name <- as.character(prp_lrn$formula[2])
+      self$resp_name <- as.character(mean_lrn$formula[2])
+      self$cross_fit = cross_fit
+      if (self$cross_fit > 0){
+        cf <- paste0("Cross-fit (K = ", self$cross_fit, ") ")
+      }
+      else{
+        cf <- "No cross-fit "
+      }
+      self$name = paste0(cf,"TMLE with mean_lrn: ", mean_lrn$name, " and prop_lrn: ", prp_lrn$name)
+    },
+    computeATE = function(df) {
+      #Compute ATE using TMLE
+      df$cond_mean_obs <- df$cond_mean_trt*df[[self$trt_var_name]] + df$cond_mean_ctrl*(1-df[[self$trt_var_name]])
+      df$prop_score <- pmin(pmax(df$prop_score, 0.001), 0.999) # keep propenstiy score bounded away from extremes to avoid infinite weights
+      df$clever_cov <- df[[self$trt_var_name]]/df$prop_score - (1-df[[self$trt_var_name]])/(1-df$prop_score)
+      df$clever_cov <- pmin(pmax(df$clever_cov, -40), 40) #Bound clever covariate. This is standard procedure.
+      
+      
+      # Estimate epsilon on when regressing the response on the clever covariate offset with cond_mean_obs
+      off_setter <- qlogis(pmax(pmin(df$cond_mean_obs, 1-1e-6),0+1e-6))
+      fit <- glm(df[[self$resp_name]] ~ df$clever_cov + offset(off_setter) - 1, family = binomial())
+      
+      if(!fit$converged){
+        warning("Targetting in TMLE step did not converge, setting epsilon = 0")
+        epsilon <- 0
+      }
+      else{
+        epsilon <- unname(coef(fit))
+      }
+      
+      #Update estimates
+      df$cond_mean_obs <- plogis(qlogis(df$cond_mean_obs) + epsilon*df$clever_cov)
+      df$cond_mean_ctrl <- plogis(qlogis(df$cond_mean_ctrl) - epsilon*(1/(1-df$prop_score)))
+      df$cond_mean_trt <- plogis(qlogis(df$cond_mean_trt) + epsilon*(1/df$prop_score))
+      
+      #Compute ATE
+      ATE <- mean(df$cond_mean_trt - df$cond_mean_ctrl)
+      #compute asymptotic variance
+      asvar <- var((df[[self$resp_name]]-df$cond_mean_obs)*df$clever_cov + df$cond_mean_trt - df$cond_mean_ctrl - ATE)
+      
+      return(list(ATE = ATE, asvar = asvar))
+    }
+  ))

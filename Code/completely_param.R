@@ -1,9 +1,9 @@
-setwd("C:/Users/asr/OneDrive - Capital Four Management Fondsmæglerselskab A S/Desktop/ProjStat/Code")
+setwd("/home/asr/Desktop/ProjStat/Code")
 source("Experiment.R")
 source("Estimator.R")
 source("Simulator.R")
 source("LearnerTypes.R")
-options(error = recover, warn = 2)
+options(error = recover)
 sim_cov <- function(n = 100){
   w1 <- rnorm(1, n = n)
   w2 <- rbinom(n,1,0.65)*w1
@@ -18,7 +18,6 @@ sim_cov <- function(n = 100){
   W <- cbind(w1,w2,w3,w4,w5,w6,w7,w8,w9,w10)
   W
 }
-
 
 #Function that takes output from sim_cov and simulates A using some non-linear function of W
 sim_A <- function(W){
@@ -45,21 +44,22 @@ sim_Y <- function(A,W){
 #SIMULATION SETTINGS
 nsim <- 250
 n <- 500
+set.seed(123)
 sim <- Simulator$new(n = n, sim_cov = sim_cov, sim_A = sim_A, sim_Y = sim_Y)
 prp_corr_spec <- GLM$new(A~w1+w2+w3-1, name = "GLM prp")
 mean_corr_spec <- GLM$new(Y~A + w7 + w3 -1, name = "GLM prp")
 
 exps <- list(
-  Experiment$new(sim = sim, est = TMLE$new(prp_lrn = prp_corr_spec, mean_lrn = mean_corr_spec,cross_fit = 50), n_sim = nsim)#,
-  #Experiment$new(sim = sim, est = TMLE$new(prp_lrn = prp_corr_spec, mean_lrn = mean_rf_ib,cross_fit = 2), n_sim = nsim)
-  #Experiment$new(sim = sim, est = TMLE$new(prp_lrn = prp_rf_ib, mean_lrn = mean_rf_ib,cross_fit = 2), n_sim = nsim),
-  #Experiment$new(sim = sim, est = TMLE$new(prp_lrn = prp_rf_ib, mean_lrn = mean_rf_ib,cross_fit = 10), n_sim = nsim)
+  Experiment$new(sim = sim, est = UPTMLE$new(prp_lrn = prp_corr_spec, mean_lrn = mean_corr_spec,cross_fit = 50), n_sim = nsim),
+  Experiment$new(sim = sim, est = UPTMLE$new(prp_lrn = prp_corr_spec, mean_lrn = mean_corr_spec,cross_fit = 2), n_sim = nsim),
+  Experiment$new(sim = sim, est = TMLE$new(prp_lrn = prp_corr_spec, mean_lrn = mean_corr_spec,cross_fit = 50), n_sim = nsim),
+  Experiment$new(sim = sim, est = TMLE$new(prp_lrn = prp_corr_spec, mean_lrn = mean_corr_spec,cross_fit = 2), n_sim = nsim)
 )
 
 # For loop to run all experiments
 for(i in 1:length(exps)){
   exps[[i]]$run()
-  #Save results in folder 
-  #saveRDS(exps, file = "/home/asr/Desktop/ProjStat/Code/RandomForestExp/rate_experiment1000.rds")
+  saveRDS(exps, file = "/home/asr/Desktop/ProjStat/Code/UPTMLE/parametric_exp.rds")
 }
+
 

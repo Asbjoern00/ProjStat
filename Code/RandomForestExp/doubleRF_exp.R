@@ -1,4 +1,4 @@
-setwd("C:/Users/asr/OneDrive - Capital Four Management Fondsmæglerselskab A S/Desktop/ProjStat/Code")
+setwd("/home/asr/Desktop/ProjStat/Code")
 source("Experiment.R")
 source("Estimator.R")
 source("Simulator.R")
@@ -6,13 +6,13 @@ source("LearnerTypes.R")
 options(error = recover)
 
 #SIMULATION SETTINGS
-nsim <- 150
-n <- 3000
+nsim <- 500
+n <- 1000
 sim <- Simulator$new(n = n, sim_cov = sim_cov, sim_A = sim_A, sim_Y = sim_Y)
 
 
-prp_rf_ib <- RF$new(A~., name = "RF prp",oob = FALSE, autotune =FALSE,list("num.trees" = 1000))
-mean_rf_ib <- RF$new(Y~., name = "RF mean",oob = TRUE, autotune =FALSE, hyperparams = list("num.trees" = 1000))
+prp_rf_ib <- RF$new(A~., name = "RF prp",oob = FALSE, autotune =FALSE,list("num.trees" = 500))
+mean_rf_ib <- RF$new(Y~., name = "RF mean",oob = FALSE, autotune =FALSE, hyperparams = list("num.trees" = 500))
 prp_corr_spec <- GLM$new(A~w1+w2+w3-1, name = "GLM prp")
 #Create list of Experiment objects to illustrate the importance of the rate criterion for convergence. 
 #All optimize the parameters of the random forest automatically
@@ -24,17 +24,17 @@ prp_corr_spec <- GLM$new(A~w1+w2+w3-1, name = "GLM prp")
 # 4. Increasing K of 2.
 
 exps <- list(
-  Experiment$new(sim = sim, est = TMLE$new(prp_lrn = prp_corr_spec, mean_lrn = mean_rf_ib,cross_fit = FALSE), n_sim = nsim)#,
-  #Experiment$new(sim = sim, est = TMLE$new(prp_lrn = prp_corr_spec, mean_lrn = mean_rf_ib,cross_fit = 2), n_sim = nsim)
-  #Experiment$new(sim = sim, est = TMLE$new(prp_lrn = prp_rf_ib, mean_lrn = mean_rf_ib,cross_fit = 2), n_sim = nsim),
-  #Experiment$new(sim = sim, est = TMLE$new(prp_lrn = prp_rf_ib, mean_lrn = mean_rf_ib,cross_fit = 10), n_sim = nsim)
+  Experiment$new(sim = sim, est = TMLE$new(prp_lrn = prp_corr_spec, mean_lrn = mean_rf_ib,cross_fit = 2), n_sim = nsim),
+  Experiment$new(sim = sim, est = TMLE$new(prp_lrn = prp_rf_ib, mean_lrn = mean_rf_ib,cross_fit = 2), n_sim = nsim),
+  Experiment$new(sim = sim, est = TMLE$new(prp_lrn = prp_corr_spec, mean_lrn = mean_rf_ib,cross_fit = 10), n_sim = nsim),
+  Experiment$new(sim = sim, est = TMLE$new(prp_lrn = prp_rf_ib, mean_lrn = mean_rf_ib,cross_fit = 10), n_sim = nsim)
 )
 
 # For loop to run all experiments
 for(i in 1:length(exps)){
   exps[[i]]$run()
   #Save results in folder 
-  #saveRDS(exps, file = "/home/asr/Desktop/ProjStat/Code/RandomForestExp/rate_experiment1000.rds")
+  saveRDS(exps, file = "/home/asr/Desktop/ProjStat/Code/RandomForestExp/rate_experiment.rds")
 }
 
 

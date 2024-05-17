@@ -6,16 +6,14 @@ source("LearnerTypes.R")
 #options(error = recover, warn = 2)
 
 #SIMULATION SETTINGS
-nsim <- 300
-n <- 3000
+nsim <- 250
+n <- 1000
 sim <- Simulator$new(n = n, sim_cov = sim_cov, sim_A = sim_A, sim_Y = sim_Y)
 
 rf_hyperparams <- list(
   num.tree = 1000
 )
-miss_spec_prp <- GLM$new(A ~ w3 + w4 + w5 + w6 + w7 + w8 + w9 + w10-1, name = "GLM misspec.")
-corr_spec_prp <- GLM$new(A ~ w1+w2+w3, name = "GLM corr. spec.")
-prp_reg <- GLMNet$new(A~., name = "GLMNet")
+corr_spec_prp <- GLM$new(A ~ w1+w2+w3-1, name = "GLM corr. spec.")
 mean_rf_oob <- RF$new(Y~., name = "RF mean OOB",oob = TRUE, hyperparams =rf_hyperparams)
 mean_rf_ib <- RF$new(Y~., name = "RF mean",oob = FALSE, hyperparams =rf_hyperparams)
 
