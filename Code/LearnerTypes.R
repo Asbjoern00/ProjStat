@@ -7,6 +7,7 @@ GLM <- R6::R6Class(
   inherit = Learner,
   private = list(
     fitter = function(X,y){
+      browser()
       if(is.null(self$hyperparams)){
         arglist <- c(list("formula"= y~X-1, "family"= binomial()))
       }
@@ -29,9 +30,9 @@ GLMNet <- R6::R6Class(
   inherit = Learner,
   private = list(
     fitter = function(X,y){
-      #Consider adding parallel to this if slow
-      #doMC::registerDoMC(cores = 5)
-      glmnet::cv.glmnet(X, y, family = "binomial", nfolds = 5)
+      #Consider adding parallel to this if slow. This is actually the LASSO objective. Specify otherwise to get ridge
+      doMC::registerDoMC(cores = 5)
+      glmnet::cv.glmnet(X, y, family = "binomial", nfolds = 5,parallel = TRUE)
     },
     predictor = function(X){
       as.vector(predict(self$fitted, X, type = "response"))

@@ -241,7 +241,7 @@ OS <- R6::R6Class(
           self$prp_lrn$reset()
           
         }
-        #Recreate the initial dataset with additional columns
+        #Recreate the initial dataset with additional columns used for prediction
         df <- do.call(rbind, rebuild_datasets)
       }
       else {
@@ -388,6 +388,7 @@ UPTMLE <- R6::R6Class(
     },
     computeATE = function(df) {
       #Compute ATE using TMLE
+      browser()
       df$cond_mean_obs <- df$cond_mean_trt*df[[self$trt_var_name]] + df$cond_mean_ctrl*(1-df[[self$trt_var_name]])
       df$prop_score <- pmin(pmax(df$prop_score, 0.001), 0.999) # keep propenstiy score bounded away from extremes to avoid infinite weights
       df$clever_cov <- df[[self$trt_var_name]]/df$prop_score - (1-df[[self$trt_var_name]])/(1-df$prop_score)
@@ -413,7 +414,7 @@ UPTMLE <- R6::R6Class(
       
       #Compute ATE
       ATE <- mean(df$cond_mean_trt - df$cond_mean_ctrl)
-      #compute asymptotic variance
+      #compute asymptotic variance. This estimate can be quite aggresive due to the fact that we have truncated the clever covariate.
       asvar <- var((df[[self$resp_name]]-df$cond_mean_obs)*df$clever_cov + df$cond_mean_trt - df$cond_mean_ctrl - ATE)
       
       return(list(ATE = ATE, asvar = asvar))
