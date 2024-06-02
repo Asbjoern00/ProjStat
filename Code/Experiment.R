@@ -46,9 +46,9 @@ Experiment <- R6::R6Class("Experiment",
             valid_sim <- TRUE
           }
         }
-        asvars[i] <- sim$asvar
-        TrueATEs[i] <- sim$ATE
-        self$est$fit(sim$out_frame)
+        asvars[i] <- self$sim$asvar
+        TrueATEs[i] <- self$sim$ATE
+        self$est$fit(self$sim$out_frame)
         ATEs[i] <- self$est$ATE
         #if(self$est$ATE > 0.9){
         #  browser()

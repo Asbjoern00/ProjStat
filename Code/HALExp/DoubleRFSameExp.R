@@ -14,7 +14,7 @@ sim_cov <- function(n){
   w2 <- rbinom(n,1,0.65)*w1
   w3 <- rbinom(n, 1,0.3)
   w4 <- rbinom(n,1,0.7)*w3
-  w5 <- rnorm(n,30,4) # simulate an age-like variable
+  w5 <- rpois(n,30) #simulate an age-like variable
   w6 <- rbinom(n,1,0.47)*w4
   w7 <- rbinom(n,1,0.4)*w1
   w8 <- rbinom(n,1,0.65)
@@ -26,7 +26,8 @@ sim_cov <- function(n){
 #Function that takes output from sim_cov and simulates A using some non-linear function of W
 sim_A <- function(W){
   pA <- function(W){
-    plogis(W[,1] - exp(2*W[,2]*W[,4]) + log(1+W[,3]+W[,7]) + 0.7*sin(W[,8])/cosh(W[,5]+W[,9]) + W[,9]*(0.3+W[,10])^2 + rnorm(n,1,0.5))
+    prob_A <- plogis(W[,1] - exp(2*W[,2]*W[,4]) + log(1+W[,3]+W[,7]) + 0.7*sin(W[,8])/cosh(W[,5]+W[,9]) + W[,9]*(0.3+W[,10])^2 + 1)
+    prob_A <- pmin(pmax(prob_A,0.0001),0.9999)
   }
   prob_A <- pA(W)
   A <- rbinom(n = nrow(W), size = 1, prob = prob_A)
@@ -34,44 +35,36 @@ sim_A <- function(W){
 }
 
 sim_Y <- function(A,W){
-  pY <- function(A,W,eps){
+  pY <- function(A,W){
     #We assume that w1, w2, .., w6 are well established riskfactors for the outcome. Therefore make the probability of 
     #Y given interactions of these assign positive probability to Y = 1. Also know that there is a risk of Y = 1 if A = 1
     risk_factors <- W[,1]*(exp(0.5*W[,2])) + log(1.5+W[,3]*W[,4])*(W[,6]+(W[,5]-35)*0.1) + cosh(0.15*(W[,5]-35)+W[,6]*W[,3]) + 0.3*A
     #Assume also that there are some unknown factors that are not well established. We let these enter the model as noise with mixed signs
     noise <- (W[,9] + W[,7])/(W[,8]+1) + sinh(W[,10] - 1.2)*W[,4] + 0.3*W[,9]*W[,6]
-    plogis(risk_factors + noise - eps)
+    plogis(risk_factors + noise - 3)
   }
-  eps <- rnorm(nrow(W),3,0.5)
-  prob_Y <- pY(A,W,eps)
+  prob_Y <- pY(A,W)
   Y <- rbinom(n = nrow(W), size = 1, prob = prob_Y)
-  list(Y = Y, pY1 = pY(1,W,eps), pY0 = pY(0,W,eps), pY = prob_Y)
+  list(Y = Y, pY1 = pY(1,W), pY0 = pY(0,W), pY = prob_Y)
 }
 sim <- Simulator$new(n = n, sim_cov = sim_cov, sim_A = sim_A, sim_Y = sim_Y)
 
 hyperparams <- list(smoothness_orders = 0)
+
 prp_hal <- HAL$new(A~., name = "HAL prp", hyperparams = hyperparams)
 mean_hal <- HAL$new(Y~., name = "HAL mean", hyperparams = hyperparams)
 
-#Create list of Experiment objects to illustrate the importance of the rate criterion for convergence. 
-#All optimize the parameters of the random forest automatically
-#All use cross-fitting to eliminate bias from overfitting
-# All using TMLE as the estimator
-# 1. corr_spec_prp and mean_rf_ib
-# 2. prp_rf_ib and mean_rf_ib
+prp_rf_ib <- RF$new(A~., name = "RF prp",oob = FALSE, autotune =FALSE,list("num.trees" = 500))
+mean_rf_ib <- RF$new(Y~., name = "RF mean",oob = FALSE, autotune =FALSE, hyperparams = list("num.trees" = 500))
 
-exps <- list(Experiment$new(sim = sim, est = TMLE$new(prp_lrn = prp_hal,mean_lrn=mean_hal,cross_fit = FALSE), n_sim = nsim),
-             Experiment$new(sim = sim, est = TMLE$new(prp_lrn = prp_hal,mean_lrn=mean_hal,cross_fit = 5), n_sim = nsim),
-             Experiment$new(sim = sim, est = TMLE$new(prp_lrn = GLMNet$new(A~.^3),mean_lrn=GLMNet$new(Y~.^3),cross_fit = 5), n_sim = nsim),
-             Experiment$new(sim = sim, est = TMLE$new(prp_lrn = RF$new(A~.),mean_lrn=RF$new(Y~.),cross_fit = 5), n_sim = nsim)
+prp_rf_oob <-RF$new(A~., name = "RF prp",oob = TRUE, autotune =FALSE,list("num.trees" = 500))
+mean_rf_oob <-RF$new(Y~., name = "RF prp",oob = TRUE, autotune =FALSE,list("num.trees" = 500))
+
+exps <- list(Experiment$new(sim = sim, est = TMLE$new(prp_lrn = prp_rf_ib,mean_lrn=mean_rf_ib,cross_fit = FALSE), n_sim = nsim),
+             Experiment$new(sim = sim, est = TMLE$new(prp_lrn = GLMNet$new(A ~ .^3),mean_lrn=GLMNet$new(Y ~ .^3),cross_fit = FALSE), n_sim = nsim)
 )
 
-# For loop to run all experiments
 for(i in 1:length(exps)){
   exps[[i]]$run()
-  #Save results in folder 
-  saveRDS(exps, file = "/home/asr/Desktop/ProjStat/Code/HALExp/hal_experiment2_1.rds")
+  saveRDS(exps, file = "/home/asr/Desktop/ProjStat/Code/HALExp/hal_experiment2_1_3rd.rds")
 }
-
-
-

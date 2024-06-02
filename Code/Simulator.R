@@ -30,7 +30,6 @@ Simulator <- R6::R6Class("Simulator",
                              
                              # Bind W, A, Y together to tibble, such that the columns in W are named w1, w2, ..., w10
                              out_frame <- cbind(W, A, Y) %>% as_tibble()
-                             
                              self$ATE <- ATE
                              self$asvar <- mean(private$eif(Y = Y, pY1 = Y_lst$pY1, pY0 = Y_lst$pY0, A = A, propA = propA, pY = Y_lst$pY)^2)
                              self$out_frame <- out_frame

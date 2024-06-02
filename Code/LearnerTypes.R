@@ -7,7 +7,6 @@ GLM <- R6::R6Class(
   inherit = Learner,
   private = list(
     fitter = function(X,y){
-      browser()
       if(is.null(self$hyperparams)){
         arglist <- c(list("formula"= y~X-1, "family"= binomial()))
       }

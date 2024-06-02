@@ -40,19 +40,19 @@ n <- 500
 set.seed(123)
 sim <- Simulator$new(n = n, sim_cov = sim_cov, sim_A = sim_A, sim_Y = sim_Y)
 prp_corr_spec <- GLM$new(A~w1+w2+w3-1, name = "GLM prp")
-mean_corr_spec <- GLM$new(Y~A + w7 + w3 -1, name = "GLM prp")
+mean_corr_spec <- GLM$new(Y~A + w4 + w3 -1, name = "GLM prp")
 
 exps <- list(
-  Experiment$new(sim = sim, est = UPTMLE$new(prp_lrn = prp_corr_spec, mean_lrn = mean_corr_spec,cross_fit = 50), n_sim = nsim),
-  Experiment$new(sim = sim, est = UPTMLE$new(prp_lrn = prp_corr_spec, mean_lrn = mean_corr_spec,cross_fit = 2), n_sim = nsim),
-  Experiment$new(sim = sim, est = TMLE$new(prp_lrn = prp_corr_spec, mean_lrn = mean_corr_spec,cross_fit = 50), n_sim = nsim),
-  Experiment$new(sim = sim, est = TMLE$new(prp_lrn = prp_corr_spec, mean_lrn = mean_corr_spec,cross_fit = 2), n_sim = nsim)
+  Experiment$new(sim = sim, est = OS$new(prp_lrn = prp_corr_spec, mean_lrn = mean_corr_spec,cross_fit = 50), n_sim = nsim),
+  Experiment$new(sim = sim, est = OS$new(prp_lrn = prp_corr_spec, mean_lrn = mean_corr_spec,cross_fit = 2), n_sim = nsim),
+  Experiment$new(sim = sim, est = OS$new(prp_lrn = prp_corr_spec, mean_lrn = mean_corr_spec,cross_fit = FALSE), n_sim = nsim)
+  
 )
 
 # For loop to run all experiments
 for(i in 1:length(exps)){
   exps[[i]]$run()
-  saveRDS(exps, file = "/home/asr/Desktop/ProjStat/Code/UPTMLE/parametric_exp.rds")
+  saveRDS(exps, file = "/home/asr/Desktop/ProjStat/Code/UPTMLE/parametric_exp_os.rds")
 }
 
 
