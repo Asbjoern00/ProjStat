@@ -55,8 +55,8 @@ rf_hyperparams <- list(
 )
 corr_spec_prp <- GLM$new(A ~ w1+w2+w3-1, name = "GLM corr. spec.")
 prp_rf_ib <- RF$new(A~., name = "RF prp",oob = FALSE, autotune =FALSE,rf_hyperparams)
-prp_rf_oob <- RF$new(A~., name = "RF prp oob",oob = TRUE, autotune =FALSE,rf_hyperparams)
-mean_rf_oob <- RF$new(Y~., name = "RF mean OOB",oob = TRUE, hyperparams =rf_hyperparams)
+prp_rf_oob <- RF$new(A~., name = "RF OOB",oob = TRUE, autotune =FALSE,rf_hyperparams)
+mean_rf_oob <- RF$new(Y~., name = "RF OOB",oob = TRUE, hyperparams =rf_hyperparams)
 mean_rf_ib <- RF$new(Y~., name = "RF mean",oob = FALSE, hyperparams =rf_hyperparams)
 
 #Create list of Experiment objects to illustrate difference between using inbag and out of bag samples for random forests
@@ -77,6 +77,6 @@ exps <- list(
 for(i in 1:length(exps)){
   exps[[i]]$run()
   #Save results in folder 
-  saveRDS(exps, file = "/home/asr/Desktop/ProjStat/Code/RandomForestExp/oob_experiment2.rds")
-  print(paste("Done with entire simulation",i,"of",length(exps)))
+  saveRDS(exps, file = "/home/asr/Desktop/ProjStat/Code/OOB1/oob_no_cf_regression.rds")
+  #print(paste("Done with entire simulation",i,"of",length(exps)))
 }

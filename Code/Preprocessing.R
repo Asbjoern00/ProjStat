@@ -2,30 +2,6 @@ library(vroom)
 library(tidyverse)
 library(ggplot2)
 library(gridExtra)
-plot_marginals <- function(df, type = "count", ncol = 6){
-  if(type == "count"){
-    geom <- geom_col(fill = gray(0.5))
-  }
-  else{
-    geom <- geom_density(fill = gray(0.5))
-  }
-  lambda <- function(df, col){
-#    if (!(col %in% c("age2", "year"))) {
-#      count_text <- geom_text(aes(x = `get(col)`, y = mean(count),
-#                                  label = paste(round(count*1e-3,0),"K",sep="")), size = 2)
-#    } else {
-    count_text <- c()
-#    }
-    df %>% group_by(get(col)) %>% summarise(count = n()) %>%
-      ggplot(aes(x = `get(col)`, y = count)) + geom + ylab("") +
-      theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=0.2)) +
-      count_text + xlab(col)
-  }
-  lst_plt <- lapply(colnames(df), lambda, df = df)
-  n <- length(lst_plt)
-  do.call("grid.arrange", c(lst_plt, ncol=ncol))
-}
-
 data_dir <- "/home/asr/Desktop/ProjStat/Data"
 wd <- "/home/asr/Desktop/ProjStat/Code"
 setwd(wd)
@@ -42,17 +18,25 @@ df <- df %>% select(-c(PrevKryo,PrevMultbirth))
 #PrevMacrosomia4500,PrevMacrosomia45, PrevMultMacro encode the same information 
 df <- df %>% select(-c(PrevEpisotomi,PrevRBC12, PrevMacrosomia4500, PrevMultMacro))
 
-#Other notes: 
-# - 3 very large observations of PrevTotal, >40 when rest are <30.
-# - 2 of the three very large from above also have very large prevSAGM. This makes fine sense in terms of blood loss. Why did the last person not receive this
-# - Last person has very large prevFFP as well. This makes good sense.
-# - Some very large values of prevTK, but nothing to be really concerned about
-# - PrevPlanned CS has two levels, suffix B means planned before labor, suffix A means acute
+#Need to encode intendedCS and PPH as integers for subsequent use. Also mutate columns prev_rbc and prev_timing to snake_case 
+df <- df %>% mutate(intendedCS = case_when(intendedCS == "No" ~ 0, 
+                              intendedCS == "Yes" ~ 1,
+                              .default = 999)) %>% 
+  mutate(PPH = case_when(PPH == "No" ~ 0,
+                         PPH == "Yes" ~ 1,
+                         .default = 999)) %>% 
+  mutate(PrevRBC = as.factor(case_when(PrevRBC == "-amount= 0" ~ "amt_0",
+                             PrevRBC == "-amount= 1-2" ~ "amt_1_2",
+                             PrevRBC == "-amount= 3-5" ~ "amt_3_5",
+                             PrevRBC == "-amount= 6+" ~ "amt_6",
+                             .default = "amt_na"))) %>% 
+  mutate(PrevTiming = as.factor(case_when(PrevTiming == "No PPH" ~ "No",
+                                       PrevTiming == "Primary PPH" ~ "Primary",
+                                       PrevTiming == "Secondary PPH" ~ "Secondary",
+                                       .default = "NA")))
 
+df <- df %>% janitor::clean_names()
 
-
-#Plot marginals, looks ok.
-#plot_marginals(df)
 
 saveRDS(df, paste(data_dir,"processeddata.rds", sep = "/"))
 

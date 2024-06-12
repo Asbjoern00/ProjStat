@@ -17,7 +17,6 @@ GLM <- R6::R6Class(
       return(fitted)
     },
     predictor = function(X){
-      #I fcking hate this solution
       new_data <- data.frame(X = I(X))
       predict(self$fitted, newdata = new_data, type = "response")
     }
@@ -58,10 +57,12 @@ RF <- R6::R6Class(
   public = list(
     oob = NULL,
     autotune = NULL,
-    initialize = function(formula, name=NULL, hyperparams=NULL, oob = FALSE, autotune = FALSE){
+    cv = NULL,
+    initialize = function(formula, name=NULL, hyperparams=NULL, oob = FALSE, autotune = FALSE, cv = FALSE){
       super$initialize(formula, name, hyperparams)
       self$oob <- oob
       self$autotune <- autotune
+      self$cv <- cv
     }
   ),
   private = list(
@@ -69,15 +70,51 @@ RF <- R6::R6Class(
       rhs <- as.character(self$formula[3])
       form <- as.formula(paste0("y~", rhs))
       df = as.data.frame(cbind(X,y))
-      df <- df[, -which(names(df) == "(Intercept)")]
+      df <- df[, which(names(df) != "(Intercept)")]
       if(self$autotune){
-        df$y <- as.factor(df$y)
-        task <- mlr::makeClassifTask(data = df, target = "y")
-        res <- tuneRanger::tuneRanger(task, iters = 25, num.threads = 8)
-        res$model$learner.model
+        mtrys <- c(ceiling(sqrt(ncol(df)-1)-2),ceiling(sqrt(ncol(df)-1)-1),ceiling(sqrt(ncol(df)-1)),ceiling(sqrt(ncol(df)-1)+1))
+        minnodesizes <- c(ceiling(1/10*nrow(df)), ceiling(nrow(df)*1/100), ceiling(nrow(df)/200), 3)
+        # Make list of cartesian product of mtrys and minnodesizes
+        hyperparams <- expand.grid(mtrys, minnodesizes)
+        names(hyperparams) <- c("mtry", "min.node.size")
+        models <- vector(mode = "list", length = nrow(hyperparams))
+        model_loss <- numeric(nrow(hyperparams))
+        if(self$cv){
+          #split data into 5 folds
+          split_data <- private$split_dataset(df, 5)
+          for(i in 1:nrow(hyperparams)){
+            model_loss[i] <- 0 
+            for(j in 1:5){
+              #get training data
+              train_data <- do.call(rbind, split_data[-j])
+              #get test data
+              test_data <- split_data[[j]]
+              arglist <- c(list("formula"= form, data = train_data, "keep.inbag" = TRUE, "mtry" = hyperparams[i,"mtry"],
+                                "min.node.size" = hyperparams[i,"min.node.size"]), self$hyperparams)
+              models[[i]] <- do.call(ranger::ranger, arglist)
+              
+              model_loss[i] <- model_loss[i] + mean((test_data$y -predict(models[[i]], test_data)$predictions)^2)/5
+            }
+          }
+          best_model_idx <- which.min(model_loss)
+          arglist <- c(list("formula"= form, data = df, "keep.inbag" = TRUE, "mtry" = hyperparams[best_model_idx,"mtry"],
+                            "min.node.size" = hyperparams[best_model_idx,"min.node.size"]), self$hyperparams)
+          do.call(ranger::ranger, arglist)
+        }
+        else{
+          for(i in 1:nrow(hyperparams)){
+            arglist <- c(list("formula"= form, data = df, "keep.inbag" = TRUE, "mtry" = hyperparams[i,"mtry"],
+                              "min.node.size" = hyperparams[i,"min.node.size"]), self$hyperparams)
+            models[[i]] <- do.call(ranger::ranger, arglist)
+            model_loss[i] <- models[[i]]$prediction.error
+          }
+          best_model_idx <- which.min(model_loss)
+          models[[best_model_idx]] 
+        }
+        
       }
       else{
-        arglist <- c(list("formula"= form, data = df, "classification" = TRUE, "keep.inbag" = TRUE), self$hyperparams)
+        arglist <- c(list("formula"= form, data = df, "keep.inbag" = TRUE), self$hyperparams)
         do.call(ranger::ranger, arglist) 
       }
     },
@@ -94,7 +131,6 @@ RF <- R6::R6Class(
         pred[idx] <- NA
       }
       else{
-        #browser()
         #Take means over rows if running a classification forest.
         pred <- predict(self$fitted, as.data.frame(X), predict.all = TRUE)$predictions
       }
@@ -102,14 +138,22 @@ RF <- R6::R6Class(
       pred <- rowMeans(pred, na.rm = TRUE)
       
       return(pred)
+    },
+    split_dataset = function(data, n){
+      # Calculate the number of rows in each subset
+      subset_size <- ceiling(nrow(data) / n)
+      
+      # Generate a grouping variable for splitting
+      groups <- rep(1:n, each = subset_size, length.out = nrow(data))
+      
+      # Split the dataset into equal-sized subsets
+      split_data <- split(data, groups)
+      
+      return(split_data)
     }
   )
 )
 
-# # Note that this is how to make a probability forest work (this is what tune-ranger outputs). Consider doing this for the other RF as well)
-#if(self$autotune){
-#pred <- predict(self$fitted, as.data.frame(X))$predictions[,"1"]
-#}
 
 #Implement a learner of the Highly Adaptive Lasso (HAL) type
 HAL <- R6::R6Class(

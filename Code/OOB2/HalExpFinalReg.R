@@ -79,11 +79,8 @@ exps <- list(Experiment$new(sim = sim, est = TMLE$new(prp_lrn = prp_rf_oob,mean_
              Experiment$new(sim = sim, est = TMLE$new(prp_lrn = prp_rf_ib,mean_lrn = mean_glm,cross_fit = 5), n_sim = nsim), # GLMnet mean, RF prp, 5 fold crossfit
              Experiment$new(sim = sim, est = TMLE$new(prp_lrn = prp_glm,mean_lrn=mean_rf_ib,cross_fit = 5), n_sim = nsim) # RF mean, GLMnet prp, 5 fold crossfit
 )
-
-for(i in 1:length(exps)){
+for(i in 1:(length(exps))){
   exps[[i]]$run()
-  saveRDS(exps, file = "/home/asr/Desktop/ProjStat/Code/HALExp/HalExpFinal.rds")
-  exps[[i]]$plotdist()
-  ggsave(paste0("/home/asr/Desktop/ProjStat/Code/HALExp/Plots/",i,"_dist.png"))
+  saveRDS(exps, file = "/home/asr/Desktop/ProjStat/Code/HALExp/HalExpFinalRegression.rds")
   print(i)
 }

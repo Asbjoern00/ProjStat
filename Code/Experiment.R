@@ -23,6 +23,7 @@ Experiment <- R6::R6Class("Experiment",
     confint_upr = NULL,
     cvrg = NULL,
     estasvar = NULL,
+    comptime = NULL,
     initialize = function(n_sims, sim, est){
       self$n_sims <- n_sims
       self$sim <- sim
@@ -35,6 +36,7 @@ Experiment <- R6::R6Class("Experiment",
       confint_lwr <- numeric(self$n_sims)
       confint_upr <- numeric(self$n_sims)
       estasvar <- numeric(self$n_sims)
+      comptime <- numeric(self$n_sims)
       for(i in 1:self$n_sims){
         
         #Consider parallelizing this
@@ -48,7 +50,10 @@ Experiment <- R6::R6Class("Experiment",
         }
         asvars[i] <- self$sim$asvar
         TrueATEs[i] <- self$sim$ATE
+        start_time <- Sys.time()
         self$est$fit(self$sim$out_frame)
+        end_time <- Sys.time()
+        comptime[i] <- as.numeric(difftime(end_time,start_time, units = "min"))
         ATEs[i] <- self$est$ATE
         #if(self$est$ATE > 0.9){
         #  browser()
@@ -57,9 +62,10 @@ Experiment <- R6::R6Class("Experiment",
         confint_upr[i] <- self$est$confint_upr
         estasvar[i] <- self$est$asvar
         if (verbose){
-          cat(sprintf("Simulation %d done\n", i))
+          cat(sprintf("Simulation %d done", i), sprintf(" took %f minutes \n", comptime[i]))
         }
       }
+      self$comptime <- comptime
       self$TrueATE <- mean(TrueATEs)
       self$asvar <- mean(asvars)
       self$estasvar <- mean(estasvar)
