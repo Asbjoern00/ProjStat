@@ -27,7 +27,7 @@ Simulator <- R6::R6Class("Simulator",
                              Y_lst <- self$sim_Y(A,W)
                              Y <- Y_lst$Y
                              ATE <- mean(Y_lst$pY1 - Y_lst$pY0)
-                             
+                              
                              # Bind W, A, Y together to tibble, such that the columns in W are named w1, w2, ..., w10
                              out_frame <- cbind(W, A, Y) %>% as_tibble()
                              self$ATE <- ATE

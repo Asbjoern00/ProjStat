@@ -1,5 +1,4 @@
 source("Learner.R")
-library(mgcv)
 library(ranger)
 #Make GLM class that Inherits from the learner class 
 GLM <- R6::R6Class(

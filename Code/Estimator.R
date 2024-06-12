@@ -319,7 +319,7 @@ TMLE <- R6::R6Class(
   "TMLE",
   inherit = OS,
   public = list(
-    initialize = function(prp_lrn, mean_lrn, trt_var_name = "A", cross_fit = 0){
+    initialize = function(prp_lrn, mean_lrn, cross_fit = 0){
       self$prp_lrn <- prp_lrn
       self$mean_lrn <- mean_lrn
       self$trt_var_name <- as.character(prp_lrn$formula[2])
@@ -372,7 +372,7 @@ UPTMLE <- R6::R6Class(
   "UPTMLE",
   inherit = Estimator,
   public = list(
-    initialize = function(prp_lrn, mean_lrn, trt_var_name = "A", cross_fit = 0){
+    initialize = function(prp_lrn, mean_lrn, cross_fit = 0){
       self$prp_lrn <- prp_lrn
       self$mean_lrn <- mean_lrn
       self$trt_var_name <- as.character(prp_lrn$formula[2])

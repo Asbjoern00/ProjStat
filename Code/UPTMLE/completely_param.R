@@ -13,7 +13,6 @@ sim_cov <- function(n = 100){
   W
 }
 
-#Function that takes output from sim_cov and simulates A using some non-linear function of W
 sim_A <- function(W){
   pA <- function(W){
     plogis(W[,1] - 2*W[,2] + 0.5*W[,3])
@@ -44,10 +43,8 @@ mean_corr_spec <- GLM$new(Y~A + w4 + w3 -1, name = "GLM prp")
 
 exps <- list(
   Experiment$new(sim = sim, est = UPTMLE$new(prp_lrn = prp_corr_spec, mean_lrn = mean_corr_spec,cross_fit = 50), n_sim = nsim),
-  Experiment$new(sim = sim, est = UPTMLE$new(prp_lrn = prp_corr_spec, mean_lrn = mean_corr_spec,cross_fit = 10), n_sim = nsim),
   Experiment$new(sim = sim, est = UPTMLE$new(prp_lrn = prp_corr_spec, mean_lrn = mean_corr_spec,cross_fit = 2), n_sim = nsim),
   Experiment$new(sim = sim, est = TMLE$new(prp_lrn = prp_corr_spec, mean_lrn = mean_corr_spec,cross_fit = 50), n_sim = nsim),
-  Experiment$new(sim = sim, est = TMLE$new(prp_lrn = prp_corr_spec, mean_lrn = mean_corr_spec,cross_fit = 10), n_sim = nsim),
   Experiment$new(sim = sim, est = TMLE$new(prp_lrn = prp_corr_spec, mean_lrn = mean_corr_spec,cross_fit = 2), n_sim = nsim)
 )
 
